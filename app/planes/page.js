@@ -1,12 +1,26 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { supabase } from '@lib/supabase'
 
 export default function Planes() {
-  const [anual, setAnual] = useState(false)
-  const [loadingPlan, setLoadingPlan] = useState(null)
+ const [anual, setAnual] = useState(false)
+const [loadingPlan, setLoadingPlan] = useState(null)
+const [user, setUser] = useState(null)
+
+useEffect(() => {
+  async function getUser() {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session) setUser(session.user)
+  }
+  getUser()
+}, [])
 
   async function handlePago(plan) {
+  if (!user) {
+    window.location.href = '/registro'
+    return
+  }
   setLoadingPlan(plan)
   try {
     const res = await fetch('/api/crear-preferencia', {
@@ -14,8 +28,8 @@ export default function Planes() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         plan,
-        userEmail: '',
-        userId: '',
+        userEmail: user.email,
+        userId: user.id,
       })
     })
     const data = await res.json()
@@ -32,12 +46,23 @@ export default function Planes() {
 
       {/* NAVBAR */}
       <nav style={{background: 'white', borderBottom: '1px solid #e2e0d8', padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 100}}>
-        <Link href="/" style={{fontWeight: 500, fontSize: '1rem', color: '#1a1916'}}>Generador de Recibos MX</Link>
-        <div style={{display: 'flex', gap: '12px'}}>
-          <Link href="/login" style={{padding: '8px 16px', borderRadius: '8px', border: '1px solid #e2e0d8', fontSize: '14px', color: '#1a1916'}}>Iniciar sesión</Link>
-          <Link href="/registro" style={{padding: '8px 16px', borderRadius: '8px', background: '#1a1916', color: 'white', fontSize: '14px'}}>Crear cuenta gratis</Link>
-        </div>
-      </nav>
+  <Link href="/" style={{fontWeight: 500, fontSize: '1rem', color: '#1a1916'}}>Generador de Recibos MX</Link>
+  <div style={{display: 'flex', gap: '12px', alignItems: 'center'}}>
+    {user ? (
+      <>
+        <span style={{fontSize: '13px', color: '#6b6860'}}>{user.email}</span>
+        <Link href="/dashboard" style={{padding: '8px 16px', borderRadius: '8px', background: '#1a1916', color: 'white', fontSize: '14px'}}>
+          Ir al dashboard
+        </Link>
+      </>
+    ) : (
+      <>
+        <Link href="/login" style={{padding: '8px 16px', borderRadius: '8px', border: '1px solid #e2e0d8', fontSize: '14px', color: '#1a1916'}}>Iniciar sesión</Link>
+        <Link href="/registro" style={{padding: '8px 16px', borderRadius: '8px', background: '#1a1916', color: 'white', fontSize: '14px'}}>Crear cuenta gratis</Link>
+      </>
+    )}
+  </div>
+</nav>
 
       <div style={{maxWidth: '860px', margin: '0 auto', padding: '3rem 1rem 4rem'}}>
 
