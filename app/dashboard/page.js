@@ -502,45 +502,57 @@ function GeneradorRecibos({ user, profile, onReciboGuardado }) {
             </button>
 
             {/* COMPARTIR */}
-            <button onClick={() => {
-              const texto =
-                `*${form.tipo} ${form.num}*\n` +
-                `Fecha: ${form.fecha}\n\n` +
-                `*${form.bizNombre || 'Mi negocio'}*\n\n` +
-                `Cliente: ${form.cliNombre || '—'}\n\n` +
-                `*Conceptos:*\n` +
-                items.filter(i => i.desc || i.price).map(i =>
-                  `  • ${i.desc || '—'} (${i.qty} x $${fmt(i.price)}) = $${fmt((parseFloat(i.qty)||0)*(parseFloat(i.price)||0))}`
-                ).join('\n') + '\n\n' +
-                (descOn ? `Descuento (${descPct}%): -$${fmt(t.descAmt)}\n` : '') +
-                (ivaOn ? `IVA (16%): $${fmt(t.iva)}\n` : '') +
-                `*Total: $${fmt(t.total)} MXN*\n` +
-                `Pago: ${form.metodo} · ${form.estado === 'pagado' ? 'Pagado ✓' : 'Pendiente'}\n\n` +
-                (form.notas || 'Gracias por su preferencia.')
+<button onClick={() => {
+  // Paso 1 — Abrir PDF
+  const estilos = `
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Georgia,serif;color:#1a1a1a;padding:2rem;background:white;max-width:680px;margin:0 auto}
+    table{width:100%;border-collapse:collapse}
+    img{max-width:100%}
+    @media print{body{padding:0}}
+  `
+  const contenido = document.getElementById('receipt-preview-content')?.innerHTML || ''
+  const win = window.open('', '_blank')
+  win.document.write(`<!DOCTYPE html>
+    <html><head>
+      <meta charset="UTF-8">
+      <title>Recibo ${form.num}</title>
+      <style>${estilos}</style>
+    </head>
+    <body>
+      ${contenido}
+      <script>
+        window.onload = function() {
+          setTimeout(function() { window.print(); }, 500);
+        }
+      <\/script>
+    </body></html>`)
+  win.document.close()
 
-              if (navigator.share) {
-                navigator.share({
-                  title: `Recibo ${form.num}`,
-                  text: texto,
-                }).catch(() => {
-                  window.open('https://wa.me/?text=' + encodeURIComponent(texto), '_blank')
-                })
-              } else {
-                window.open('https://wa.me/?text=' + encodeURIComponent(texto), '_blank')
-              }
-            }} style={{padding: '10px 20px', background: 'transparent', border: '1px solid #c8c5bb', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontFamily: 'inherit'}}>
-              Compartir
-            </button>
+  // Paso 2 — Abrir WhatsApp después de 2 segundos
+  const texto =
+    `*${form.tipo} ${form.num}*\n` +
+    `Fecha: ${form.fecha}\n\n` +
+    `*${form.bizNombre || 'Mi negocio'}*\n\n` +
+    `Cliente: ${form.cliNombre || '—'}\n\n` +
+    `*Conceptos:*\n` +
+    items.filter(i => i.desc || i.price).map(i =>
+      `  • ${i.desc || '—'} (${i.qty} x $${fmt(i.price)}) = $${fmt((parseFloat(i.qty)||0)*(parseFloat(i.price)||0))}`
+    ).join('\n') + '\n\n' +
+    (descOn ? `Descuento (${descPct}%): -$${fmt(t.descAmt)}\n` : '') +
+    (ivaOn ? `IVA (16%): $${fmt(t.iva)}\n` : '') +
+    `*Total: $${fmt(t.total)} MXN*\n` +
+    `Pago: ${form.metodo} · ${form.estado === 'pagado' ? 'Pagado ✓' : 'Pendiente'}\n\n` +
+    `📎 Guarda el PDF que se abrió y adjúntalo a este chat.\n\n` +
+    (form.notas || 'Gracias por su preferencia.')
 
-            {/* GUARDAR EN HISTORIAL */}
-            <button onClick={guardarRecibo} style={{padding: '10px 20px', border: '1px solid #c8c5bb', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontFamily: 'inherit', background: 'transparent'}}>
-              Guardar en historial
-            </button>
+  setTimeout(() => {
+    window.open('https://wa.me/?text=' + encodeURIComponent(texto), '_blank')
+  }, 2000)
 
-            {/* EDITAR */}
-            <button onClick={() => setTab('form')} style={{padding: '10px 20px', border: '1px solid #c8c5bb', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontFamily: 'inherit', background: 'transparent'}}>
-              ← Editar
-            </button>
+}} style={{padding: '10px 20px', background: 'transparent', border: '1px solid #c8c5bb', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontFamily: 'inherit'}}>
+  Compartir por WhatsApp
+</button>
 
           </div>
         </div>
