@@ -74,7 +74,7 @@ function GeneradorRecibos({ user, profile, onReciboGuardado }) {
   const [recibos, setRecibos] = useState([])
   const [ivaOn, setIvaOn] = useState(false)
   const [descOn, setDescOn] = useState(false)
-  const [descPct, setDescPct] = useState(0)
+  const [descPct, setDescPct] = useState('')
   const [logo, setLogo] = useState(null)
   const logoInputRef = useRef(null)
   const [form, setForm] = useState({
@@ -85,11 +85,9 @@ function GeneradorRecibos({ user, profile, onReciboGuardado }) {
   })
 
   useEffect(() => {
-    // Cargar logo guardado
     const savedLogo = localStorage.getItem('recibos_logo')
     if (savedLogo) setLogo(savedLogo)
 
-    // Cargar datos del negocio
     const bizGuardado = localStorage.getItem('recibos_biz')
     if (bizGuardado) {
       try {
@@ -147,7 +145,7 @@ function GeneradorRecibos({ user, profile, onReciboGuardado }) {
 
   function calcTotals() {
     const sub = items.reduce((a, i) => a + ((parseFloat(i.qty) || 0) * (parseFloat(i.price) || 0)), 0)
-    const descAmt = descOn ? sub * (descPct / 100) : 0
+    const descAmt = descOn ? sub * ((parseFloat(descPct) || 0) / 100) : 0
     const base = sub - descAmt
     const iva = ivaOn ? base * 0.16 : 0
     return { sub, descAmt, iva, total: base + iva }
@@ -214,6 +212,7 @@ function GeneradorRecibos({ user, profile, onReciboGuardado }) {
         ))}
       </div>
 
+      {/* ===== FORMULARIO ===== */}
       {tab === 'form' && (
         <div>
           {/* DATOS DEL RECIBO */}
@@ -343,7 +342,16 @@ function GeneradorRecibos({ user, profile, onReciboGuardado }) {
                 <label style={{display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer'}}>
                   <input type="checkbox" checked={descOn} onChange={e => setDescOn(e.target.checked)} /> Descuento
                 </label>
-                {descOn && <input type="number" min="0" max="100" value={descPct} onChange={e => setDescPct(+e.target.value)} style={{width: '70px', padding: '4px 8px', border: '1px solid #e2e0d8', borderRadius: '6px', fontSize: '13px', fontFamily: 'inherit'}} placeholder="%" />}
+                {descOn && (
+                  <input
+                    type="number" min="0" max="100"
+                    value={descPct}
+                    placeholder="%"
+                    onFocus={e => e.target.select()}
+                    onChange={e => setDescPct(e.target.value)}
+                    style={{width: '70px', padding: '4px 8px', border: '1px solid #e2e0d8', borderRadius: '6px', fontSize: '13px', fontFamily: 'inherit'}}
+                  />
+                )}
               </div>
               <div style={{maxWidth: '280px', marginLeft: 'auto'}}>
                 <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#6b6860', padding: '3px 0'}}><span>Subtotal</span><span>${fmt(t.sub)}</span></div>
@@ -383,17 +391,17 @@ function GeneradorRecibos({ user, profile, onReciboGuardado }) {
             <button onClick={() => {
               setForm(f => ({...f, cliNombre: '', cliRfc: '', cliDir: '', metodo: 'Efectivo', estado: 'pagado', notas: ''}))
               setItems([{id: Date.now(), desc: '', qty: '', price: ''}])
-              setIvaOn(false); setDescOn(false); setDescPct(0)
+              setIvaOn(false); setDescOn(false); setDescPct('')
               generarNumero()
             }} style={{padding: '10px 20px', background: 'transparent', border: '1px solid #c8c5bb', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontFamily: 'inherit'}}>Nuevo recibo</button>
           </div>
         </div>
       )}
 
-      {/* VISTA PREVIA */}
+      {/* ===== VISTA PREVIA ===== */}
       {tab === 'preview' && (
         <div>
-          <div style={{background: 'white', border: '1px solid #e2e0d8', borderRadius: '12px', padding: '2.5rem', maxWidth: '640px', margin: '0 auto 1.5rem', fontFamily: 'Georgia, serif', color: '#1a1a1a'}}>
+          <div id="receipt-preview-content" style={{background: 'white', border: '1px solid #e2e0d8', borderRadius: '12px', padding: '2.5rem', maxWidth: '640px', margin: '0 auto 1.5rem', fontFamily: 'Georgia, serif', color: '#1a1a1a'}}>
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem'}}>
               {logo
                 ? <img src={logo} alt="Logo" style={{width: '72px', height: '72px', objectFit: 'contain', borderRadius: '8px', border: '1px solid #e8e5e0'}} />
@@ -422,10 +430,23 @@ function GeneradorRecibos({ user, profile, onReciboGuardado }) {
               {form.cliDir && <p style={{fontSize: '12px', color: '#999', fontFamily: 'sans-serif'}}>{form.cliDir}</p>}
             </div>
             <table style={{width: '100%', borderCollapse: 'collapse', marginBottom: '1rem', fontFamily: 'sans-serif'}}>
-              <thead><tr>{['Descripción','Cant.','Precio unit.','Subtotal'].map((h, i) => <th key={h} style={{fontSize: '11px', color: '#aaa', textAlign: i > 1 ? 'right' : i === 1 ? 'center' : 'left', padding: '6px 8px', borderBottom: '1px solid #e8e5e0', textTransform: 'uppercase', letterSpacing: '0.05em'}}>{h}</th>)}</tr></thead>
-              <tbody>{items.filter(i => i.desc || i.price).map(i => (
-                <tr key={i.id}><td style={{padding: '9px 8px', borderBottom: '1px solid #f0ede8', fontSize: '13px'}}>{i.desc || '—'}</td><td style={{padding: '9px 8px', borderBottom: '1px solid #f0ede8', fontSize: '13px', textAlign: 'center'}}>{i.qty}</td><td style={{padding: '9px 8px', borderBottom: '1px solid #f0ede8', fontSize: '13px', textAlign: 'right'}}>${fmt(i.price)}</td><td style={{padding: '9px 8px', borderBottom: '1px solid #f0ede8', fontSize: '13px', textAlign: 'right'}}>${fmt((parseFloat(i.qty)||0)*(parseFloat(i.price)||0))}</td></tr>
-              ))}</tbody>
+              <thead>
+                <tr>
+                  {['Descripción','Cant.','Precio unit.','Subtotal'].map((h, i) => (
+                    <th key={h} style={{fontSize: '11px', color: '#aaa', textAlign: i > 1 ? 'right' : i === 1 ? 'center' : 'left', padding: '6px 8px', borderBottom: '1px solid #e8e5e0', textTransform: 'uppercase', letterSpacing: '0.05em'}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {items.filter(i => i.desc || i.price).map(i => (
+                  <tr key={i.id}>
+                    <td style={{padding: '9px 8px', borderBottom: '1px solid #f0ede8', fontSize: '13px'}}>{i.desc || '—'}</td>
+                    <td style={{padding: '9px 8px', borderBottom: '1px solid #f0ede8', fontSize: '13px', textAlign: 'center'}}>{i.qty}</td>
+                    <td style={{padding: '9px 8px', borderBottom: '1px solid #f0ede8', fontSize: '13px', textAlign: 'right'}}>${fmt(i.price)}</td>
+                    <td style={{padding: '9px 8px', borderBottom: '1px solid #f0ede8', fontSize: '13px', textAlign: 'right'}}>${fmt((parseFloat(i.qty)||0)*(parseFloat(i.price)||0))}</td>
+                  </tr>
+                ))}
+              </tbody>
             </table>
             <div style={{display: 'flex', justifyContent: 'flex-end'}}>
               <div style={{width: '240px', fontFamily: 'sans-serif'}}>
@@ -436,25 +457,96 @@ function GeneradorRecibos({ user, profile, onReciboGuardado }) {
               </div>
             </div>
             <div style={{marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid #e8e5e0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: 'sans-serif'}}>
-              <div><div style={{fontSize: '10px', color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '3px'}}>Forma de pago</div><div style={{fontSize: '13px'}}>{form.metodo}</div></div>
-              <span style={{padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 500, background: form.estado === 'pagado' ? '#d6f0e0' : '#fef3c7', color: form.estado === 'pagado' ? '#14532d' : '#854d0e'}}>{form.estado === 'pagado' ? 'Pagado' : 'Pendiente'}</span>
+              <div>
+                <div style={{fontSize: '10px', color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '3px'}}>Forma de pago</div>
+                <div style={{fontSize: '13px'}}>{form.metodo}</div>
+              </div>
+              <span style={{padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 500, background: form.estado === 'pagado' ? '#d6f0e0' : '#fef3c7', color: form.estado === 'pagado' ? '#14532d' : '#854d0e'}}>
+                {form.estado === 'pagado' ? 'Pagado' : 'Pendiente'}
+              </span>
             </div>
             {form.notas && <div style={{marginTop: '1rem', fontSize: '12px', color: '#999', fontStyle: 'italic', fontFamily: 'sans-serif'}}>{form.notas}</div>}
           </div>
+
+          {/* BOTONES VISTA PREVIA */}
           <div style={{display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap'}}>
+
+            {/* DESCARGAR PDF */}
             <button onClick={() => {
-              const previewEl = document.getElementById('receipt-preview-content')
+              const estilos = `
+                *{box-sizing:border-box;margin:0;padding:0}
+                body{font-family:Georgia,serif;color:#1a1a1a;padding:2rem;background:white;max-width:680px;margin:0 auto}
+                table{width:100%;border-collapse:collapse}
+                img{max-width:100%}
+                @media print{body{padding:0}}
+              `
+              const contenido = document.getElementById('receipt-preview-content')?.innerHTML || ''
               const win = window.open('', '_blank')
-              win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Recibo ${form.num}</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Georgia,serif;color:#1a1a1a;padding:2rem;background:white;max-width:680px;margin:0 auto}@media print{body{padding:0}}</style></head><body>${previewEl?.innerHTML || ''}<script>window.onload=()=>setTimeout(()=>window.print(),400)<\/script></body></html>`)
+              win.document.write(`<!DOCTYPE html>
+                <html><head>
+                  <meta charset="UTF-8">
+                  <title>Recibo ${form.num}</title>
+                  <style>${estilos}</style>
+                </head>
+                <body>
+                  ${contenido}
+                  <script>
+                    window.onload = function() {
+                      setTimeout(function() { window.print(); }, 500);
+                    }
+                  <\/script>
+                </body></html>`)
               win.document.close()
-            }} style={{padding: '10px 20px', background: '#1a1916', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit'}}>Descargar / Imprimir PDF</button>
-            <button onClick={guardarRecibo} style={{padding: '10px 20px', border: '1px solid #c8c5bb', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontFamily: 'inherit', background: 'transparent'}}>Guardar en historial</button>
-            <button onClick={() => setTab('form')} style={{padding: '10px 20px', border: '1px solid #c8c5bb', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontFamily: 'inherit', background: 'transparent'}}>← Editar</button>
+            }} style={{padding: '10px 20px', background: '#1a1916', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit'}}>
+              Descargar PDF
+            </button>
+
+            {/* COMPARTIR */}
+            <button onClick={() => {
+              const texto =
+                `*${form.tipo} ${form.num}*\n` +
+                `Fecha: ${form.fecha}\n\n` +
+                `*${form.bizNombre || 'Mi negocio'}*\n\n` +
+                `Cliente: ${form.cliNombre || '—'}\n\n` +
+                `*Conceptos:*\n` +
+                items.filter(i => i.desc || i.price).map(i =>
+                  `  • ${i.desc || '—'} (${i.qty} x $${fmt(i.price)}) = $${fmt((parseFloat(i.qty)||0)*(parseFloat(i.price)||0))}`
+                ).join('\n') + '\n\n' +
+                (descOn ? `Descuento (${descPct}%): -$${fmt(t.descAmt)}\n` : '') +
+                (ivaOn ? `IVA (16%): $${fmt(t.iva)}\n` : '') +
+                `*Total: $${fmt(t.total)} MXN*\n` +
+                `Pago: ${form.metodo} · ${form.estado === 'pagado' ? 'Pagado ✓' : 'Pendiente'}\n\n` +
+                (form.notas || 'Gracias por su preferencia.')
+
+              if (navigator.share) {
+                navigator.share({
+                  title: `Recibo ${form.num}`,
+                  text: texto,
+                }).catch(() => {
+                  window.open('https://wa.me/?text=' + encodeURIComponent(texto), '_blank')
+                })
+              } else {
+                window.open('https://wa.me/?text=' + encodeURIComponent(texto), '_blank')
+              }
+            }} style={{padding: '10px 20px', background: 'transparent', border: '1px solid #c8c5bb', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontFamily: 'inherit'}}>
+              Compartir
+            </button>
+
+            {/* GUARDAR EN HISTORIAL */}
+            <button onClick={guardarRecibo} style={{padding: '10px 20px', border: '1px solid #c8c5bb', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontFamily: 'inherit', background: 'transparent'}}>
+              Guardar en historial
+            </button>
+
+            {/* EDITAR */}
+            <button onClick={() => setTab('form')} style={{padding: '10px 20px', border: '1px solid #c8c5bb', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontFamily: 'inherit', background: 'transparent'}}>
+              ← Editar
+            </button>
+
           </div>
         </div>
       )}
 
-      {/* HISTORIAL */}
+      {/* ===== HISTORIAL ===== */}
       {tab === 'history' && (
         <div>
           <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', gap: '10px'}}>
@@ -468,7 +560,7 @@ function GeneradorRecibos({ user, profile, onReciboGuardado }) {
               onClick={() => {
                 setForm(f => ({...f, num: r.numero, fecha: r.fecha, tipo: r.tipo, cliNombre: r.cli_nombre || '', cliRfc: r.cli_rfc || '', cliDir: r.cli_dir || '', metodo: r.metodo, estado: r.estado, notas: r.notas || ''}))
                 setItems(r.items?.length ? r.items : [{id: Date.now(), desc: '', qty: '', price: ''}])
-                setIvaOn(r.iva_on); setDescOn(r.desc_on); setDescPct(r.desc_pct)
+                setIvaOn(r.iva_on); setDescOn(r.desc_on); setDescPct(r.desc_pct || '')
                 setTab('form')
               }}>
               <div>
