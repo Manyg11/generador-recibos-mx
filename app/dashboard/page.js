@@ -48,7 +48,25 @@ export default function Dashboard() {
           {profile?.plan !== 'pro' && (
             <a href="/planes" style={{padding: '7px 14px', borderRadius: '8px', background: '#1a1916', color: 'white', fontSize: '12px', textDecoration: 'none', fontWeight: 500}}>Mejorar a Pro</a>
           )}
-          <button onClick={handleLogout} style={{padding: '7px 14px', borderRadius: '8px', border: '1px solid #e2e0d8', background: 'transparent', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit', color: '#6b6860'}}>Salir</button>
+          {profile?.plan === 'pro' && (
+  <button onClick={async () => {
+    if (!confirm('¿Cancelar tu suscripción Pro? Tu plan bajará a Gratuito al final del período.')) return
+    const res = await fetch('/api/cancelar-suscripcion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user.id })
+    })
+    const data = await res.json()
+    if (data.ok) {
+      alert('Suscripción cancelada. Seguirás con Pro hasta el final del período.')
+    } else {
+      alert('Hubo un error. Contáctanos por WhatsApp.')
+    }
+  }} style={{padding: '7px 14px', borderRadius: '8px', border: '1px solid #e2a0a0', background: 'transparent', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit', color: '#a32d2d'}}>
+    Cancelar plan
+  </button>
+)}
+<button onClick={handleLogout} style={{padding: '7px 14px', borderRadius: '8px', border: '1px solid #e2e0d8', background: 'transparent', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit', color: '#6b6860'}}>Salir</button>
         </div>
       </nav>
 

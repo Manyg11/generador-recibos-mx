@@ -1,4 +1,4 @@
-import { MercadoPagoConfig, Preference } from 'mercadopago'
+import { MercadoPagoConfig, PreApproval } from 'mercadopago'
 
 const client = new MercadoPagoConfig({
   accessToken: process.env.MP_ACCESS_TOKEN
@@ -7,41 +7,31 @@ const client = new MercadoPagoConfig({
 export async function POST(request) {
   try {
     const { plan, userEmail, userId } = await request.json()
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL
 
-    const esAnual = plan === 'anual'
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const preapproval = new PreApproval(client)
 
-    const preference = new Preference(client)
-    const response = await preference.create({
+    const response = await preapproval.create({
       body: {
-        items: [{
-          title: esAnual ? 'Generador de Recibos MX — Pro Anual' : 'Generador de Recibos MX — Pro Mensual',
-          quantity: 1,
-          unit_price: esAnual ? 799 : 99,
+        reason: plan === 'anual'
+          ? 'Generador de Recibos MX — Pro Anual'
+          : 'Generador de Recibos MX — Pro Mensual',
+        payer_email: userEmail,
+        external_reference: userId,
+        auto_recurring: {
+          frequency: plan === 'anual' ? 1 : 1,
+          frequency_type: plan === 'anual' ? 'years' : 'months',
+          transaction_amount: plan === 'anual' ? 799 : 99,
           currency_id: 'MXN',
-        }],
-        payer: {
-          email: userEmail || 'test@test.com',
         },
-        metadata: {
-          user_id: userId,
-          plan: plan,
-        },
-        back_urls: {
-          success: `${appUrl}/pago/exitoso`,
-          failure: `${appUrl}/pago/fallido`,
-          pending: `${appUrl}/pago/pendiente`,
-        },
+        back_url: `${appUrl}/pago/exitoso`,
+        status: 'pending',
       }
     })
-    
-    const url = process.env.NODE_ENV === 'production' 
-  ? response.init_point 
-  : response.sandbox_init_point
 
-return Response.json({ url })
+    return Response.json({ url: response.init_point })
   } catch (error) {
     console.error(error)
-    return Response.json({ error: 'Error al crear preferencia' }, { status: 500 })
+    return Response.json({ error: 'Error al crear suscripción' }, { status: 500 })
   }
 }
