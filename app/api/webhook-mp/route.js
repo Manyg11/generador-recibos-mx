@@ -10,60 +10,42 @@ export async function POST(request) {
     const body = await request.json()
     console.log('Webhook recibido:', JSON.stringify(body))
 
-    // Manejar pagos de suscripción
-    if (body.type === 'subscription_preapproval') {
-      const subscriptionId = body.data?.id
-      if (!subscriptionId) return Response.json({ ok: true })
-
-      const mpResponse = await fetch(
-        `https://api.mercadopago.com/preapproval/${subscriptionId}`,
-        { headers: { Authorization: `Bearer ${process.env.MP_ACCESS_TOKEN}` } }
-      )
-      const subscription = await mpResponse.json()
-      console.log('Suscripción:', JSON.stringify(subscription))
-
-      const userId = subscription.external_reference
-      const status = subscription.status
-
-      if (!userId) return Response.json({ ok: true })
-
-      if (status === 'authorized') {
-        // Suscripción activa — activar plan Pro
-        await supabase.from('profiles').update({
-          plan: 'pro',
-          subscription_id: subscriptionId,
-          subscription_status: 'active',
-        }).eq('id', userId)
-      } else if (status === 'cancelled' || status === 'paused') {
-        // Suscripción cancelada — bajar a plan gratuito
-        await supabase.from('profiles').update({
-          plan: 'free',
-          subscription_status: status,
-        }).eq('id', userId)
-      }
+    if (body.type !== 'payment') {
+      return Response.json({ ok: true })
     }
 
-    // Manejar pagos individuales de la suscripción
-    if (body.type === 'payment') {
-      const paymentId = body.data?.id
-      if (!paymentId) return Response.json({ ok: true })
+    const paymentId = body.data?.id
+    if (!paymentId) return Response.json({ ok: true })
 
-      const mpResponse = await fetch(
-        `https://api.mercadopago.com/v1/payments/${paymentId}`,
-        { headers: { Authorization: `Bearer ${process.env.MP_ACCESS_TOKEN}` } }
-      )
-      const payment = await mpResponse.json()
+    const mpResponse = await fetch(
+      `https://api.mercadopago.com/v1/payments/${paymentId}`,
+      { headers: { Authorization: `Bearer ${process.env.MP_ACCESS_TOKEN}` } }
+    )
+    const payment = await mpResponse.json()
+    console.log('Pago:', JSON.stringify(payment))
 
-      if (payment.status === 'approved') {
-        const userId = payment.external_reference || payment.metadata?.user_id
-        if (userId) {
-          await supabase.from('profiles').update({
-            plan: 'pro',
-            subscription_status: 'active',
-          }).eq('id', userId)
-        }
-      }
+    if (payment.status !== 'approved') {
+      return Response.json({ ok: true })
     }
+
+    const userId = payment.external_reference || payment.metadata?.user_id
+    const plan = payment.metadata?.plan || 'mensual'
+    const dias = payment.metadata?.dias || 30
+
+    if (!userId) return Response.json({ ok: true })
+
+    // Calcular fecha de expiración
+    const expiracion = new Date()
+    expiracion.setDate(expiracion.getDate() + parseInt(dias))
+
+    await supabase.from('profiles').update({
+      plan: 'pro',
+      subscription_status: 'active',
+      plan_expira: expiracion.toISOString(),
+      subscription_id: paymentId,
+    }).eq('id', userId)
+
+    console.log(`Plan Pro activado para ${userId} hasta ${expiracion.toISOString()}`)
 
     return Response.json({ ok: true })
   } catch (error) {
