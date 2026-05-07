@@ -18,6 +18,7 @@ export async function POST(request) {
           : 'Generador de Recibos MX — Pro Mensual',
         payer_email: userEmail,
         external_reference: userId,
+        notification_url: `${appUrl}/api/webhook-mp`,
         auto_recurring: {
           frequency: plan === 'anual' ? 1 : 1,
           frequency_type: plan === 'anual' ? 'years' : 'months',
