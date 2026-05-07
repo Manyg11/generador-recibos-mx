@@ -138,6 +138,10 @@ useEffect(() => {
             style={{display: 'block', width: '100%', textAlign: 'center', padding: '10px', borderRadius: '8px', background: '#1a1916', color: 'white', fontSize: '14px', fontWeight: 500, border: 'none', cursor: loadingPlan ? 'not-allowed' : 'pointer', opacity: loadingPlan ? 0.7 : 1, fontFamily: 'inherit'}}>
             {loadingPlan === (anual ? 'anual' : 'mensual') ? 'Redirigiendo...' : anual ? 'Contratar por $799/año' : 'Contratar por $99/mes'}
         </button>
+
+        <p style={{fontSize: '11px', color: '#9e9b93', textAlign: 'center', marginTop: '8px'}}>
+          Se requiere tarjeta de crédito para suscripciones recurrentes
+        </p>  
           </div>
 
         </div>
